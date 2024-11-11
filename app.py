@@ -4,6 +4,8 @@ from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConverasationalRetrievalChain
 
 def get_pdf_text(pdf_file):
     text = ""
@@ -28,6 +30,10 @@ def get_vectorstore(text_chunks):
     vectorstore = FAISS.from_texts(texts=text_chunks, embedding=embeddings)
     return vectorstore
 
+def get_converstation_chain(vectorstore):
+    memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
+    converstation_chain = ConverasationalRetrievalChain.from llml
+
 def main():
     load_dotenv()
     st.set_page_config(page_title="Ask from multi-PDFs",page_icon=":books:")
@@ -46,6 +52,8 @@ def main():
                 st.write(text_chunks)
 
                 vectorstore = get_vectorstore(text_chunks)
+
+                converstation = get_converstation_chain(vectorstore)
 
 
 
