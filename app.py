@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-
+import streamlit_chat as message
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
@@ -9,8 +9,11 @@ from langchain.vectorstores import FAISS
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain_community.llms import HuggingFaceHub
-
-
+from langchain.schema import (
+    SystemMessage,
+    HumanMessage,
+    AIMessage
+)
 
 def get_pdf_text(pdf_file):
     text = ""
@@ -36,30 +39,45 @@ def get_vectorstore(text_chunks):
     return vectorstore
 
 def get_converstation_chain(vectorstore):
-    
     hf_api_token = os.getenv("HUGGINGFACE_API_KEY")
     model_name = "mistralai/Mistral-7B-Instruct-v0.3"
         
     llm = HuggingFaceHub(repo_id=model_name, huggingfacehub_api_token=hf_api_token)
 
     memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
-    converstation_chain = ConversationalRetrievalChain.from_llml(
+    converstation_chain = ConversationalRetrievalChain.from_llm(
         llm =llm,
         retriever = vectorstore.as_retriever(),
         memory = memory,
     )
     return converstation_chain
 
+def handle_userinput(user_question):
+    response = st.session_state.converstation({'question':user_question})
+    st.write(response)
+    st.session_state.chat_history = response['chat_history']
+
+
+    for i, message in enumerate(st.session_state.chat_history):
+        if i % 2 == 0:
+            if isinstance(message, HumanMessage):
+                message.message(message.content, is_user=True, key=f"user_{i}")
+        elif isinstance(message, AIMessage):
+            message.message("Prince Vlad: " + message.content, is_user=False, key=f"ai_{i}") 
 
 def main():
     load_dotenv()
     st.set_page_config(page_title="Ask from multi-PDFs",page_icon=":books:")
-
+    
     if "converstation" not in st.session_state:
         st.session_state.converstation = None
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = None
 
     st.header("Ask from multi-PDFs :books:")
-    st.text_input("Ask anything from your docs:")
+    user_question =st.text_input("Ask anything from your docs:")
+    if user_question:
+        handle_userinput(user_question)
 
     with st.sidebar:
         st.subheader("Select your PDF")
@@ -75,7 +93,7 @@ def main():
 
                 st.session_state.converstation = get_converstation_chain(vectorstore)
 
-
+    
 
 if __name__ == "__main__":
     main()
